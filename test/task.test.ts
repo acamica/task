@@ -310,7 +310,7 @@ describe('Task', () => {
 
             // WHEN: we do a Task.all from the previous one Task
             const tAll = Task.all([task]);
-            
+
             // THEN: the resulting Task is resolved with an array of the resolved value
             tAll.fork(
                 jestAssertNever(cb),
@@ -324,7 +324,7 @@ describe('Task', () => {
 
             // WHEN: we do a Task.all from the previous one Task
             const tAll = Task.all([task]);
-            
+
             // THEN: the resulting Task is rejected with the rejected error
             tAll.fork(
                 assertFork(cb, err => expect(err).toEqual('Buu!')),
@@ -340,7 +340,7 @@ describe('Task', () => {
 
             // WHEN: we do a Task.all from the previous Tasks
             const tAll = Task.all([task1, task2, task3]);
-            
+
             // THEN: the resulting Task is resolved with the resolved values
             tAll.fork(
                 jestAssertNever(cb),
@@ -356,14 +356,13 @@ describe('Task', () => {
 
             // WHEN: we do a Task.all from the previous one Task
             const tAll = Task.all([task1, task2, task3]);
-            
+
             // THEN: the resulting Task is rejected with the rejected error
             tAll.fork(
                 assertFork(cb, err => expect(err).toEqual('Buu!')),
                 jestAssertUntypedNeverCalled(cb)
             );
         });
-
 
         it('should work with a muliple rejected Tasks', cb => {
             // GIVEN: a rejected Task
@@ -373,7 +372,7 @@ describe('Task', () => {
 
             // WHEN: we do a Task.all from the previous one Task
             const tAll = Task.all([task1, task2, task3]);
-            
+
             // THEN: the resulting Task is rejected with the first rejected error
             tAll.fork(
                 assertFork(cb, err => expect(err).toEqual('Foo')),
