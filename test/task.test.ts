@@ -304,7 +304,7 @@ describe('Task', () => {
     });
 
     describe('all', () => {
-        it('should work with a resolved Task', cb => {
+        it('should work with a single resolved Task', cb => {
             // GIVEN: a resolved Task
             const task = Task.resolve(5);
 
@@ -318,7 +318,7 @@ describe('Task', () => {
             );
         });
 
-        it('should work with a rejected Task', cb => {
+        it('should work with a single rejected Task', cb => {
             // GIVEN: a rejected Task
             const task = Task.reject('Buu!');
 
@@ -332,11 +332,11 @@ describe('Task', () => {
             );
         });
 
-        it('should work with a multiple resolved Tasks', cb => {
+        it('should resolve if all task are resolved', cb => {
             // GIVEN: a bunch of resolved Tasks
             const task1 = Task.resolve(10);
-            const task2 = Task.resolve(100);
-            const task3 = Task.resolve(1000);
+            const task2 = Task.resolve('100');
+            const task3 = Task.resolve(true);
 
             // WHEN: we do a Task.all from the previous Tasks
             const tAll = Task.all([task1, task2, task3]);
@@ -344,11 +344,27 @@ describe('Task', () => {
             // THEN: the resulting Task is resolved with the resolved values
             tAll.fork(
                 jestAssertNever(cb),
-                assertFork(cb, x => expect(x).toEqual([10, 100, 1000]))
+                assertFork(cb, x => expect(x).toEqual([10, '100', true]))
             );
         });
 
-        it('should work with a muliple Tasks and a rejected one', cb => {
+        it('should wait async tasks', cb => {
+            // GIVEN: a bunch of resolved Tasks
+            const task1 = Task.resolve(10);
+            const task2 = new Task<string, never>(resolve => setTimeout(_ => resolve('foo'), 10));
+            const task3 = Task.resolve(true);
+
+            // WHEN: we do a Task.all from the previous Tasks
+            const tAll = Task.all([task1, task2, task3]);
+
+            // THEN: the resulting Task is resolved with the resolved values
+            tAll.fork(
+                jestAssertNever(cb),
+                assertFork(cb, x => expect(x).toEqual([10, 'foo', true]))
+            );
+        });
+
+        it('should reject if there is even one rejected one', cb => {
             // GIVEN: a rejected Task
             const task1 = Task.resolve(10);
             const task2 = Task.reject('Buu!');
@@ -364,18 +380,22 @@ describe('Task', () => {
             );
         });
 
-        it('should work with a muliple rejected Tasks', cb => {
-            // GIVEN: a rejected Task
+        it('should reject with the first rejection', cb => {
+            // GIVEN: three rejected Task
             const task1 = Task.reject('Foo');
-            const task2 = Task.reject('Bar');
-            const task3 = Task.reject('Baz');
+            const task2 = new Task<never, number>((_, reject) => setTimeout(_ => reject(9), 0));
+            const task3 = new Task<never, boolean>((_, reject) => setTimeout(_ => reject(true), 0));
 
             // WHEN: we do a Task.all from the previous one Task
             const tAll = Task.all([task1, task2, task3]);
 
             // THEN: the resulting Task is rejected with the first rejected error
             tAll.fork(
-                assertFork(cb, err => expect(err).toEqual('Foo')),
+                err => {
+                    expect(err).toEqual('Foo');
+                    // Need to wait to make sure we test all lines in coverage
+                    setTimeout(cb, 10);
+                },
                 jestAssertUntypedNeverCalled(cb)
             );
         });

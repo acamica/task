@@ -63,7 +63,7 @@ export class Task <T, E> {
     static all <T, E> (tasks: Task<T, E>[]) {
         // Flag to track if any Task has resolved
         let rejected = false;
-        // Array we will fill with the resolved values, in order
+        // Array that we'll fill with the resolved values, in order
         const resolvedValues: T[] = [];
         // Counter of resolved Tasks (we can't use resolvedValues.length since we add elements through index)
         let resolvedQty = 0;
