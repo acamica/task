@@ -1,4 +1,4 @@
 import { Task, UncaughtError } from '../task';
-export function asUncaughtError (error: any): Task<never, UncaughtError> {
+export function asUncaughtError <T> (error: T): Task<never, UncaughtError> {
     return Task.reject(new UncaughtError(error));
 }
