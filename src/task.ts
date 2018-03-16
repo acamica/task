@@ -6,6 +6,9 @@ export class UncaughtError extends Error {
 
     constructor (private error: any) {
         super('UncaughtError: ' + error.toString());
+
+        // Preserve original stack to ease debugging:
+        this.stack = error.stack;
     }
 }
 
