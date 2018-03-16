@@ -1,7 +1,7 @@
+// Weird but I have to import "nothing" from "jest" to have the global jest functions  (describe, etc.) available
+import {} from 'jest';
 import { Task, UncaughtError } from '../src/task';
 import { assertFork, jestAssertNever, jestAssertUntypedNeverCalled } from './jest-helper';
-
-
 
 describe('Task', () => {
     describe('fork', () => {

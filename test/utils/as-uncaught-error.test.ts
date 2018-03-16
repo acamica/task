@@ -1,3 +1,5 @@
+// Weird but I have to import "nothing" from "jest" to have the global jest functions  (describe, etc.) available
+import {} from 'jest';
 import { Task, UncaughtError } from '../../src/task';
 import { asUncaughtError } from '../../src/utils/as-uncaught-error';
 import { assertFork, jestAssertNever, jestAssertUntypedNeverCalled } from '../jest-helper';
