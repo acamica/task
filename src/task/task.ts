@@ -1,7 +1,17 @@
 import { catchError, chain, IMapFn, IPipeFn, ITaskChainFn, map } from '../operators/basic';
 import { UncaughtError } from './uncaught-error';
 
+// TODO: Rename this to one of Subscription, Link, Connection, Path, TaskHandler or something similar that represents our connection
+// to the task and our ability to cancel it.
+export interface Foo {
+    cancel: () => void;
+}
+export type TeardownLogic = void | Function;
 
+export type Resolver<T, E> = (
+    resolve: (value: T) => void,
+    reject: (err: E) => void
+) => TeardownLogic;
 
 /**
  * Asynchronous Task, like a promise but lazy and typed on error
@@ -22,7 +32,7 @@ export class Task <T, E> {
      * @param resolver Function to resolve or reject the task
      *
      */
-    constructor (private resolver: (resolve: (value: T) => void, reject: (err: E) => void) => void) {
+    constructor (private resolver: Resolver<T, E>) {
 
     }
 
@@ -102,7 +112,7 @@ export class Task <T, E> {
     pipe<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10> (f1: IPipeFn<T, T1, E, E1>, f2: IPipeFn<T1, T2, E1, E2>, f3: IPipeFn<T2, T3, E2, E3>, f4: IPipeFn<T3, T4, E3, E4>, f5: IPipeFn<T4, T5, E4, E5>, f6: IPipeFn<T5, T6, E5, E6>, f7: IPipeFn<T6, T7, E6, E7>, f8: IPipeFn<T7, T8, E7, E8>, f9: IPipeFn<T8, T9, E8, E9>, f10: IPipeFn<T9, T10, E9, E10>): Task<T10, E10 | UncaughtError>;
     pipe<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> (f1: IPipeFn<T, T1, E, E1>, f2: IPipeFn<T1, T2, E1, E2>, f3: IPipeFn<T2, T3, E2, E3>, f4: IPipeFn<T3, T4, E3, E4>, f5: IPipeFn<T4, T5, E4, E5>, f6: IPipeFn<T5, T6, E5, E6>, f7: IPipeFn<T6, T7, E6, E7>, f8: IPipeFn<T7, T8, E7, E8>, f9: IPipeFn<T8, T9, E8, E9>, f10: IPipeFn<T9, T10, E9, E10>, f11: IPipeFn<T10, T11, E10, E11>): Task<T11, E11 | UncaughtError>;
     pipe<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> (f1: IPipeFn<T, T1, E, E1>, f2: IPipeFn<T1, T2, E1, E2>, f3: IPipeFn<T2, T3, E2, E3>, f4: IPipeFn<T3, T4, E3, E4>, f5: IPipeFn<T4, T5, E4, E5>, f6: IPipeFn<T5, T6, E5, E6>, f7: IPipeFn<T6, T7, E6, E7>, f8: IPipeFn<T7, T8, E7, E8>, f9: IPipeFn<T8, T9, E8, E9>, f10: IPipeFn<T9, T10, E9, E10>, f11: IPipeFn<T10, T11, E10, E11>, f12: IPipeFn<T11, T12, E11, E12>): Task<T12, E12 | UncaughtError>;
-    pipe<TFinal, EFinal> (...fns: any[]): Task<TFinal, EFinal | UncaughtError> {
+    pipe<TFinal, EFinal> (...fns: IPipeFn<any, any, any, any>[]): Task<TFinal, EFinal | UncaughtError> {
         return new Task((outerResolve, outerReject) => {
             const newTask = fns.reduce(
                 (task, f) => {
@@ -114,7 +124,11 @@ export class Task <T, E> {
                 },
                 this
             );
-            return newTask.fork(outerReject, outerResolve);
+            const foo = newTask.fork(outerReject, outerResolve);
+
+            return () => {
+                foo.cancel();
+            }
         });
     }
 
@@ -130,13 +144,29 @@ export class Task <T, E> {
         return catchError<TResult, E, EResult>(fn)(this);
     }
 
-    fork (errorFn: (error: E) => any, successFn: (value: T) => any): void {
+    fork (errorFn: (error: E) => any, successFn: (value: T) => any): Foo {
+        let teardown: void | Function = void 0;
+        let cancelled = false;
+
         new Promise((resolve, reject) => {
-            this.resolver(resolve, reject);
+            teardown = this.resolver(
+                (val: T) => !cancelled ? resolve(val) : void 0,
+                (err: E) => !cancelled ? reject(err) : void 0,
+            );
         }).then(
             (x: any) => successFn(x),
             errorFn
         );
+        return {
+            cancel: () => {
+                // Mark internally the fact that we have cancelled.
+                cancelled = true;
+                // If we have a teardown logic, call it.
+                if (typeof teardown !== 'undefined') {
+                    teardown();
+                }
+            }
+        }
     }
 }
 

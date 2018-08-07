@@ -33,9 +33,9 @@ describe('Task', () => {
 
         it('Should be asynchronous', cb => {
             // GIVEN: A task that resolves in the future
-            const task = new Task<string, never>(resolve =>
+            const task = new Task<string, never>(resolve => {
                 setTimeout(_ => resolve('wii'), 10)
-            );
+            });
 
             // WHEN: we fork, THEN: it should call the success function in ten ms
             task.fork(
@@ -66,6 +66,98 @@ describe('Task', () => {
                 assertFork(cb, x => expect(x).toBe('buu')),
                 jestAssertNever(cb)
             );
+        });
+    });
+
+    describe('cancellable', () => {
+        it('Shouldnt call any handler if cancelled and should call teardown logic', cb => {
+            const teardown = jest.fn();
+            // GIVEN: A task that never resolves or fail but has a teardown logic
+            const task = new Task(_ => {
+                return () => {
+                    teardown();
+                };
+            });
+
+            // WHEN: we fork
+            // THEN: neither the success or error callbacks are called
+            const subscription = task.fork(
+                jestAssertNever(cb),
+                jestAssertNever(cb)
+            );
+
+            // WHEN: we cancel the task
+            subscription.cancel();
+            // THEN: the tear down logic should be called.
+            expect(teardown).toBeCalled();
+            cb();
+        });
+
+        it('resolved should not be called after the task is cancelled', cb => {
+            // GIVEN: A task that resolves on the teardown logic
+            const task = new Task<number, never>((resolve, reject) => {
+                return () => {
+                    resolve(9);
+                    cb();
+                };
+            });
+
+            // WHEN: we fork
+            // THEN: neither the success or error callbacks are called
+            const subscription = task.fork(
+                jestAssertNever(cb),
+                jestAssertUntypedNeverCalled(cb)
+            );
+
+            // WHEN: we cancel the task
+            // THEN: the teardown logic is called, so the task tries
+            // to resolve but the resolve callback is not called
+            subscription.cancel();
+        });
+
+        it('reject should not be called after the task is cancelled', cb => {
+            // GIVEN: A task that resolves on the teardown logic
+            const task = new Task<never, number>((resolve, reject) => {
+                return () => {
+                    reject(9);
+                    cb();
+                };
+            });
+
+            // WHEN: we fork
+            // THEN: neither the success or error callbacks are called
+            const subscription = task.fork(
+                jestAssertUntypedNeverCalled(cb),
+                jestAssertNever(cb)
+            );
+
+            // WHEN: we cancel the task
+            // THEN: the teardown logic is called, so the task tries
+            // to resolve but the resolve callback is not called
+            subscription.cancel();
+        });
+
+        it('Should throw if the teardown function throws', cb => {
+            // GIVEN: A task that throws on the teardown logic
+            const task = new Task((resolve, reject) => {
+                return () => {
+                    throw 'buu';
+                };
+            });
+
+            // WHEN: we fork
+            // THEN: neither the success or error callbacks are called
+            const subscription = task.fork(
+                jestAssertNever(cb),
+                jestAssertNever(cb)
+            );
+
+            // WHEN: we cancel the task
+            // THEN: the teardown logic throws so we throw
+            expect(() => {
+                subscription.cancel();
+            }).toThrow('buu');
+            cb();
         });
     });
 
@@ -131,6 +223,30 @@ describe('Task', () => {
             );
         });
 
+        it('Should propagate cancellation', cb => {
+            const teardown = jest.fn();
+            // GIVEN: A task that never resolves or fail but has a teardown logic
+            const task = new Task(_ => {
+                return () => {
+                    teardown();
+                };
+            })
+
+            // WHEN: we map the function
+            const result = task.map(x => x);
+
+            // THEN: neither the success or error callbacks are called
+            const subscription = result.fork(
+                jestAssertNever(cb),
+                jestAssertNever(cb)
+            );
+
+            // WHEN: we cancel the task
+            subscription.cancel();
+            // THEN: the tear down logic should be called.
+            expect(teardown).toBeCalled();
+            cb();
+        });
     });
     describe('fromPromise', () => {
         it('Should work with resolved promises', (cb) => {
@@ -238,6 +354,31 @@ describe('Task', () => {
                 jestAssertNever(cb)
             );
         });
+
+        it('Should propagate cancellation', cb => {
+            const teardown = jest.fn();
+            // GIVEN: A task that never resolves or fail but has a teardown logic
+            const task = new Task(_ => {
+                return () => {
+                    teardown();
+                };
+            })
+
+            // WHEN: we chain the function
+            const result = task.chain(x => Task.resolve(x));
+
+            // THEN: neither the success or error callbacks are called
+            const subscription = result.fork(
+                jestAssertNever(cb),
+                jestAssertNever(cb)
+            );
+
+            // WHEN: we cancel the task
+            subscription.cancel();
+            // THEN: the tear down logic should be called.
+            expect(teardown).toBeCalled();
+            cb();
+        });
     });
 
     describe('catch', () => {
@@ -321,6 +462,31 @@ describe('Task', () => {
                 jestAssertUntypedNeverCalled(cb)
             );
         });
+
+        it('Should propagate cancellation', cb => {
+            const teardown = jest.fn();
+            // GIVEN: A task that never resolves or fail but has a teardown logic
+            const task = new Task<never, never>(_ => {
+                return () => {
+                    teardown();
+                };
+            })
+
+            // WHEN: we catch an error
+            const result = task.catch(x => Task.resolve(1));
+
+            // THEN: neither the success or error callbacks are called
+            const subscription = result.fork(
+                jestAssertNever(cb),
+                jestAssertUntypedNeverCalled(cb)
+            );
+
+            // WHEN: we cancel the task
+            subscription.cancel();
+            // THEN: the tear down logic should be called.
+            expect(teardown).toBeCalled();
+            cb();
+        });
     });
 
     describe('all', () => {
@@ -388,7 +554,7 @@ describe('Task', () => {
         it('should wait async tasks', cb => {
             // GIVEN: a bunch of resolved Tasks
             const task1 = Task.resolve(10);
-            const task2 = new Task<string, never>(resolve => setTimeout(_ => resolve('foo'), 10));
+            const task2 = new Task<string, never>(resolve => {setTimeout(_ => resolve('foo'), 10)});
             const task3 = Task.resolve(true);
 
             // WHEN: we do a Task.all from the previous Tasks
@@ -420,8 +586,8 @@ describe('Task', () => {
         it('should reject with the first rejection', cb => {
             // GIVEN: three rejected Task
             const task1 = Task.reject('Foo');
-            const task2 = new Task<never, number>((_, reject) => setTimeout(_ => reject(9), 0));
-            const task3 = new Task<never, boolean>((_, reject) => setTimeout(_ => reject(true), 0));
+            const task2 = new Task<never, number>((_, reject) => {setTimeout(_ => reject(9), 0)});
+            const task3 = new Task<never, boolean>((_, reject) => {setTimeout(_ => reject(true), 0)});
 
             // WHEN: we do a Task.all from the previous one Task
             const tAll = Task.all([task1, task2, task3]);
@@ -470,20 +636,19 @@ describe('Task', () => {
 
         it('Should work with multiple functions', (cb) => {
             // GIVEN: a resolved value
-            const task = Task.resolve(0);
+            const task = Task.resolve('a');
 
             // WHEN: we pipe the value
             const result = task.pipe(
-                map(n => '' + n),
-                map(s => s + '!'),
-                map(s => s + '!'),
-                map(s => s + '!')
+                map(s => s + 'b'),
+                map(s => s + 'c'),
+                map(s => s + 'd')
             );
 
             // THEN: the success function should be called with the transformed value
             result.fork(
                 jestAssertNever(cb),
-                assertFork(cb, x => expect(x).toBe('0!!!'))
+                assertFork(cb, x => expect(x).toBe('abcd'))
             );
         });
 
@@ -587,6 +752,35 @@ describe('Task', () => {
                 jestAssertNever(cb),
                 assertFork(cb, x => expect(x).toBe('0'))
             );
+        });
+
+        it('Should propagate cancellation if the methods propagate cancellation', cb => {
+            const teardown = jest.fn();
+            // GIVEN: A task that never resolves or fail but has a teardown logic
+            const task = new Task<never, never>(_ => {
+                return () => {
+                    teardown();
+                };
+            })
+
+            // WHEN: we catch an error
+            const result = task.pipe(
+                map(x => x),
+                chain(x => Task.resolve(x)),
+                catchError(x => Task.resolve(1))
+            );
+
+            // THEN: neither the success or error callbacks are called
+            const subscription = result.fork(
+                jestAssertNever(cb),
+                jestAssertUntypedNeverCalled(cb)
+            );
+
+            // WHEN: we cancel the task
+            subscription.cancel();
+            // THEN: the tear down logic should be called.
+            expect(teardown).toBeCalled();
+            cb();
         });
     });
 });
