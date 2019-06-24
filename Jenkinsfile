@@ -33,14 +33,6 @@ pipeline {
                 sh 'rm .npmrc'
             }
         }
-
-        stage('Build Docker images') {
-            steps {
-                sh './docker-build.sh ${JOB_NAME} jenkins-${BUILD_NUMBER}'
-                sh 'docker login -u ${REGISTRY_USR} -p ${REGISTRY_PSW} registry.acamica.com'
-                sh './docker-push.sh ${JOB_NAME} jenkins-${BUILD_NUMBER}'
-            }
-        }
     }
 
     post {
