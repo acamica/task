@@ -1,6 +1,6 @@
 {
   "name": "@acamica/task",
-  "version": "0.2.2",
+  "version": "0.2.3-8c1ef62.1",
   "description": "Promise replacement made with TypeScript more suitable for functional programming and error handling",
   "keywords": [
     "async",
@@ -39,7 +39,7 @@
     "precommit": "lint-staged",
     "contributors-add": "all-contributors add",
     "contributors-generate": "all-contributors generate",
-    "publish-lib": "rm -rf dist/ && npm run test && cp package.json dist/ && npm publish dist/"
+    "publish-lib": "rm -rf dist/ && npm run test && npm run build && cp package.json dist/ && npm publish dist/"
   },
   "lint-staged": {
     "{src,test}/**/*.ts": [
@@ -83,10 +83,10 @@
   "devDependencies": {
     "@types/jest": "^21.1.0",
     "@types/node": "^8.0.0",
-    "all-contributors-cli": "^4.5.1",
     "colors": "^1.1.2",
+    "all-contributors-cli": "^4.5.1",
     "commitizen": "^2.9.6",
-    "coveralls": "3.0.4",
+    "coveralls": "^3.0.0",
     "cross-env": "^5.0.1",
     "cz-conventional-changelog": "^2.0.0",
     "husky": "^0.14.0",
@@ -105,7 +105,7 @@
     "ts-node": "^3.0.6",
     "tslint": "^5.4.3",
     "tslint-config-acamica": "2.0.0",
-    "typedoc": "0.14.2",
+    "typedoc": "0.11.1",
     "typescript": "^2.3.4",
     "validate-commit-msg": "^2.12.2"
   }
