@@ -140,12 +140,14 @@ export class Task <T, E> {
     }
 
     fork (errorFn: (error: E) => any, successFn: (value: T) => any): void {
-        new Promise((resolve, reject) => {
-            this.resolver(resolve, reject);
-        }).then(
-            (x: any) => successFn(x),
-            errorFn
-        );
+        (async () => {
+            await new Promise((resolve, reject) => {
+                this.resolver(resolve, reject);
+            }).then(
+                (x: any) => successFn(x),
+                errorFn
+            );
+        })();
     }
 }
 
