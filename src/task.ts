@@ -72,6 +72,11 @@ export class Task <T, E> {
         let resolvedQty = 0;
 
         return new Task((outerResolve, outerReject) => {
+            // If the tasks array is empty, resolve with an empty array.
+            if (!tasks.length) {
+                outerResolve([]);
+            }
+
             tasks.forEach((aTask: any, index: number) => {
                 aTask
                     .fork((err: any) => {
